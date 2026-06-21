@@ -1,9 +1,8 @@
 //! HEIF encoder, mirroring the `image` crate's per-format encoder convention.
 //!
-//! [`HeifEncoder`] is generic over a [`Write`] sink and implements [`ImageEncoder`],
-//! so it slots into `DynamicImage::write_with_encoder` exactly like the codecs that
-//! ship with the `image` crate (e.g. `JpegEncoder`, `WebPEncoder`). Encoding uses
-//! x265 (HEVC) under the hood.
+//! [`HeifEncoder`] is generic over a [`Write`] sink and implements [`ImageEncoder`], so it slots into
+//! `DynamicImage::write_with_encoder` exactly like the codecs that ship with the `image` crate (e.g. `JpegEncoder`,
+//! `WebPEncoder`). Encoding uses x265 (HEVC) under the hood.
 
 use std::ffi::{CString, c_void};
 use std::io::Write;
@@ -17,8 +16,8 @@ use crate::ffi;
 use crate::info::BitDepth;
 use crate::sys;
 
-/// x265 speed/efficiency preset — the native "speed" control. Faster presets encode
-/// quicker at the cost of compression efficiency. Maps 1:1 to libheif's `preset` param.
+/// x265 speed/efficiency preset — the native "speed" control. Faster presets encode quicker at the cost of compression
+/// efficiency. Maps 1:1 to libheif's `preset` param.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Preset {
     Ultrafast,
@@ -87,9 +86,8 @@ pub struct EncoderConfig {
     pub chroma: Chroma,
     /// Output bit depth, default [`BitDepth::Eight`].
     ///
-    /// libheif supports 8/10/12-bit natively, but the prebuilt x265 in the bundled
-    /// binaries is an 8-bit build; requesting 10/12-bit there makes libheif return an
-    /// error, which is surfaced as [`HeifError::Encode`].
+    /// libheif supports 8/10/12-bit natively, but the prebuilt x265 in the bundled binaries is an 8-bit build;
+    /// requesting 10/12-bit there makes libheif return an error, which is surfaced as [`HeifError::Encode`].
     pub bit_depth: BitDepth,
 }
 
@@ -232,8 +230,7 @@ fn scale(value: u32, src_bits: u32, dst_bits: u32) -> u32 {
 }
 
 impl EncoderConfig {
-    /// Returns the libheif chroma format of the interleaved plane for the given alpha
-    /// presence and output bit depth.
+    /// Returns the libheif chroma format of the interleaved plane for the given alpha presence and output bit depth.
     fn interleaved_chroma(&self, alpha: bool) -> sys::heif_chroma {
         match (image_depth(self.bit_depth) > 8, alpha) {
             (false, false) => sys::heif_chroma_heif_chroma_interleaved_RGB,
@@ -271,8 +268,8 @@ impl EncoderConfig {
 
         let chroma = self.interleaved_chroma(layout.alpha);
 
-        // SAFETY: every raw pointer below is checked and the corresponding libheif object
-        // is freed on all paths before returning.
+        // SAFETY: every raw pointer below is checked, and the corresponding libheif object is freed on all paths before
+        // returning.
         unsafe {
             let mut image: *mut sys::heif_image = ptr::null_mut();
             ffi::check(sys::heif_image_create(
@@ -290,12 +287,12 @@ impl EncoderConfig {
         }
     }
 
-    /// Inner half of [`encode`](Self::encode): assumes `image` is a valid, owned
-    /// `heif_image` (freed by the caller) and produces the encoded bytes.
+    /// Inner half of [`encode`](Self::encode): assumes `image` is a valid, owned `heif_image` (freed by the caller) and
+    /// produces the encoded bytes.
     ///
     /// # Safety
-    /// `image` must be a non-null pointer from `heif_image_create`, and `buf` must
-    /// describe `width`×`height` pixels laid out per `layout`.
+    /// `image` must be a non-null pointer from `heif_image_create`, and `buf` must describe `width`×`height` pixels
+    /// laid out per `layout`.
     unsafe fn encode_with_image(
         &self,
         image: *mut sys::heif_image,
@@ -318,8 +315,8 @@ impl EncoderConfig {
             ))
             .map_err(|m| EncodeError::Heif(HeifError::EncoderInit(m)))?;
 
-            // Fill the interleaved plane row by row, honoring libheif's stride and scaling
-            // samples to the output bit depth.
+            // Fill the interleaved plane row by row, honoring libheif's stride and scaling samples to the output bit
+            // depth.
             let mut stride: i32 = 0;
             let plane = sys::heif_image_get_plane(image, sys::heif_channel_heif_channel_interleaved, &mut stride);
             if plane.is_null() {
@@ -460,8 +457,8 @@ impl EncoderConfig {
                 let out_pixel = out_row + x * layout.out_channels * out_sample_bytes;
 
                 for c in 0..layout.out_channels {
-                    // Map the output channel back to an input channel: grayscale replicates
-                    // luma (channel 0) into R/G/B and keeps alpha as the last channel.
+                    // Map the output channel back to an input channel: grayscale replicates luma (channel 0) into R/G/B
+                    // and keeps alpha as the last channel.
                     let src_channel = if layout.gray {
                         if layout.alpha && c == 3 { 1 } else { 0 }
                     } else {
@@ -472,8 +469,8 @@ impl EncoderConfig {
                     let value = scale(read_sample(buf, in_off, layout.src_sample_bytes), src_bits, out_depth);
 
                     let out_off = out_pixel + c * out_sample_bytes;
-                    // SAFETY: `out_off + out_sample_bytes <= stride*height` by construction;
-                    // the plane was allocated for `width`×`height` at `out_channels`.
+                    // SAFETY: `out_off + out_sample_bytes <= stride*height` by construction; the plane was allocated
+                    // for `width`×`height` at `out_channels`.
                     unsafe {
                         if out_sample_bytes == 1 {
                             *plane.add(out_off) = value as u8;
@@ -514,8 +511,8 @@ unsafe extern "C" fn write_callback(
     size: usize,
     userdata: *mut c_void,
 ) -> sys::heif_error {
-    // SAFETY: `userdata` is the `&mut Vec<u8>` we passed to `heif_context_write`, and
-    // `data`/`size` describe a valid buffer for the duration of the call.
+    // SAFETY: `userdata` is the `&mut Vec<u8>` we passed to `heif_context_write`, and `data`/`size` describe a valid
+    // buffer for the duration of the call.
     unsafe {
         let out = &mut *(userdata as *mut Vec<u8>);
         if !data.is_null() && size > 0 {
@@ -526,8 +523,8 @@ unsafe extern "C" fn write_callback(
     }
 }
 
-/// Internal encode failure, distinguishing unsupported inputs (which become
-/// `ImageError::Unsupported`) from libheif/runtime failures.
+/// Internal encode failure, distinguishing unsupported inputs (which become `ImageError::Unsupported`) from
+/// libheif/runtime failures.
 enum EncodeError {
     Unsupported(ExtendedColorType),
     Heif(HeifError),

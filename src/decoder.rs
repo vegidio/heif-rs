@@ -1,9 +1,8 @@
 //! HEIF decoder, mirroring the `image` crate's per-format decoder convention.
 //!
-//! [`HeifDecoder`] is generic over a [`Read`] source and implements [`ImageDecoder`],
-//! so it slots into `DynamicImage::from_decoder` exactly like the codecs that ship
-//! with the `image` crate (e.g. `JpegDecoder`, `PngDecoder`). Decoding uses libde265
-//! (HEVC) under the hood.
+//! [`HeifDecoder`] is generic over a [`Read`] source and implements [`ImageDecoder`], so it slots into
+//! `DynamicImage::from_decoder` exactly like the codecs that ship with the `image` crate (e.g. `JpegDecoder`,
+//! `PngDecoder`). Decoding uses libde265 (HEVC) under the hood.
 
 use std::io::Read;
 use std::ptr;
@@ -26,8 +25,8 @@ pub struct DecoderConfig {
 /// HEIF decoder reading from `R`, using libde265.
 ///
 /// The container header is parsed eagerly in [`new`](HeifDecoder::new) so that
-/// [`dimensions`](ImageDecoder::dimensions), [`color_type`](ImageDecoder::color_type),
-/// and [`bit_depth`](HeifDecoder::bit_depth) are available before the frame is decoded.
+/// [`dimensions`](ImageDecoder::dimensions), [`color_type`](ImageDecoder::color_type), and
+/// [`bit_depth`](HeifDecoder::bit_depth) are available before the frame is decoded.
 ///
 /// # Example
 /// ```no_run
@@ -45,8 +44,8 @@ pub struct HeifDecoder<R: Read> {
     context: *mut sys::heif_context,
     /// Primary image handle parsed from the container; released in `Drop`.
     handle: *mut sys::heif_image_handle,
-    /// Owned compressed bytes. libheif's memory IO references this buffer without
-    /// copying, so it must outlive `context`. Never moved out.
+    /// Owned compressed bytes. libheif's memory IO references this buffer without copying, so it must outlive
+    /// `context`. Never moved out.
     _data: Vec<u8>,
     config: DecoderConfig,
     width: u32,
@@ -58,17 +57,16 @@ pub struct HeifDecoder<R: Read> {
 }
 
 impl<R: Read> HeifDecoder<R> {
-    /// Create a decoder from `r`, reading the container header eagerly so that
-    /// [`dimensions`](ImageDecoder::dimensions) and [`color_type`](ImageDecoder::color_type)
-    /// are available before the frame is decoded.
+    /// Create a decoder from `r`, reading the container header eagerly so that [`dimensions`](ImageDecoder::dimensions)
+    /// and [`color_type`](ImageDecoder::color_type) are available before the frame is decoded.
     pub fn new(mut r: R) -> ImageResult<Self> {
         let mut data = Vec::new();
         r.read_to_end(&mut data).map_err(ImageError::IoError)?;
 
         ffi::init();
 
-        // SAFETY: pointers are checked; the context/handle are freed on every error path
-        // and in `Drop`. `data` outlives `context` (stored alongside it below).
+        // SAFETY: pointers are checked; the context/handle are freed on every error path and in `Drop`. `data` outlives
+        // `context` (stored alongside it below).
         unsafe {
             let context = sys::heif_context_alloc();
             if context.is_null() {
@@ -118,8 +116,8 @@ impl<R: Read> HeifDecoder<R> {
         self
     }
 
-    /// Bit depth of the image — extra information that [`ColorType`] cannot express
-    /// (it only distinguishes 8- vs 16-bit).
+    /// Bit depth of the image — extra information that [`ColorType`] cannot express (it only distinguishes 8- vs
+    /// 16-bit).
     pub fn bit_depth(&self) -> BitDepth {
         match self.depth {
             12 => BitDepth::Twelve,
@@ -200,8 +198,8 @@ impl<R: Read> ImageDecoder for HeifDecoder<R> {
 }
 
 impl<R: Read> HeifDecoder<R> {
-    /// Copies the decoded interleaved plane into `buf` row by row (honoring libheif's
-    /// stride), scaling >8-bit samples up to `image`'s full-range 16-bit layout.
+    /// Copies the decoded interleaved plane into `buf` row by row (honoring libheif's stride), scaling >8-bit samples
+    /// up to `image`'s full-range 16-bit layout.
     ///
     /// # Safety
     /// `image` must be a valid decoded `heif_image` owned by the caller.

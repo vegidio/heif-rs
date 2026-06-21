@@ -1,8 +1,8 @@
 //! Encode with custom settings via the [`heif::HeifEncoder`] builder.
 //!
 //! Instead of the one-line [`heif::encode`] facade, use `HeifEncoder` directly (through `image`'s `ImageEncoder` trait)
-//! to tune quality, preset, and chroma. Builder methods: `with_quality` (0–100, higher = better),
-//! `with_lossless`, `with_preset` (x265 speed preset), `with_chroma` (4:2:0 / 4:2:2 / 4:4:4), `with_bit_depth`.
+//! to tune quality, preset, and chroma. Builder methods: `with_quality` (0–100, higher = better), `with_lossless`,
+//! `with_preset` (x265 speed preset), `with_chroma` (4:2:0 / 4:2:2 / 4:4:4), `with_bit_depth`.
 //!
 //! Run with:
 //!

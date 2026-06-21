@@ -1,15 +1,14 @@
 //! Build script for `heif-rs`.
 //!
-//! At build time this script obtains the prebuilt **static** libheif binaries (and the
-//! codec/support libraries it depends on) for the current target, links them statically
-//! into the crate, and generates the raw FFI bindings from the bundled `heif.h` header.
+//! At build time this script obtains the prebuilt **static** libheif binaries (and the codec/support libraries it
+//! depends on) for the current target, links them statically into the crate, and generates the raw FFI bindings from
+//! the bundled `heif.h` header.
 //!
 //! Binaries come from: https://github.com/vegidio/binaries-heif/releases
 //!
-//! The binaries are normally downloaded from the pinned release and cached under the
-//! build's `OUT_DIR`. To build offline (or against a custom build of libheif), set the
-//! `HEIF_BINARIES_DIR` environment variable to a directory that contains `include/` and
-//! `lib/` subdirectories laid out like the release archives.
+//! The binaries are normally downloaded from the pinned release and cached under the build's `OUT_DIR`. To build
+//! offline (or against a custom build of libheif), set the `HEIF_BINARIES_DIR` environment variable to a directory that
+//! contains `include/` and `lib/` subdirectories laid out like the release archives.
 
 use std::env;
 use std::fs;
@@ -19,9 +18,8 @@ use std::path::{Path, PathBuf};
 /// Version of the `binaries-heif` release to download.
 const VERSION: &str = "26.6.0";
 
-/// Static archives ship these `.a` libraries. Listed dependents-before-dependencies so
-/// that GNU ld's single-pass resolution finds every symbol: libheif uses x265 to encode
-/// HEVC and libde265 to decode it.
+/// Static archives ship these `.a` libraries. Listed dependents-before-dependencies so that GNU ld's single-pass
+/// resolution finds every symbol: libheif uses x265 to encode HEVC and libde265 to decode it.
 const STATIC_LIBS: &[&str] = &["heif", "x265", "de265"];
 
 fn main() {
@@ -36,8 +34,8 @@ fn main() {
     generate_bindings(&include_dir);
 }
 
-/// Returns the directory containing the `include/` and `lib/` subdirectories, either from
-/// the `HEIF_BINARIES_DIR` override or by downloading + extracting the pinned release.
+/// Returns the directory containing the `include/` and `lib/` subdirectories, either from the `HEIF_BINARIES_DIR`
+/// override or by downloading + extracting the pinned release.
 fn locate_binaries() -> PathBuf {
     if let Ok(dir) = env::var("HEIF_BINARIES_DIR") {
         let dir = PathBuf::from(dir);
@@ -134,8 +132,8 @@ fn extract_zip(bytes: &[u8], dest: &Path) {
     }
 }
 
-/// Tells Cargo/rustc where the static libraries live and which ones to link, including
-/// the C++ runtime and system libraries the codecs depend on.
+/// Tells Cargo/rustc where the static libraries live and which ones to link, including the C++ runtime and system
+/// libraries the codecs depend on.
 fn emit_link_directives(lib_dir: &Path) {
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
 
