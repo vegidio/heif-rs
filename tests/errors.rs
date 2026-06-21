@@ -40,7 +40,11 @@ fn decode_rejects_garbage_input() {
 
 #[test]
 fn probe_rejects_truncated_heif() {
+    // HEIF keeps its metadata boxes (`ftyp`, `meta`) at the front of the file and the pixel
+    // data (`mdat`) at the back, so chopping off the tail leaves a perfectly probable header.
+    // Truncate to a short prefix that keeps `ftyp` but cuts into the `meta` box, forcing the
+    // container parse to fail.
     let bytes = std::fs::read(HEIF).expect("read assets/image.heic");
-    let truncated = &bytes[..bytes.len() / 4];
+    let truncated = &bytes[..64.min(bytes.len())];
     assert!(heif::probe(truncated).is_err(), "truncated HEIC should fail to probe");
 }
