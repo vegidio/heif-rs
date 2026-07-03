@@ -16,10 +16,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 /// Version of the `binaries-heif` release to download.
-const VERSION: &str = "26.6.0";
+const VERSION: &str = "26.7.0";
 
-/// Static archives ship these `.a` libraries. Listed dependents-before-dependencies so that GNU ld's single-pass
-/// resolution finds every symbol: libheif uses x265 to encode HEVC and libde265 to decode it.
+/// Static archives ship these libraries. Listed dependents-before-dependencies so that GNU ld's single-pass
+/// resolution finds every symbol: libheif uses x265 to encode HEVC and libde265 to decode it. These are the
+/// macOS/Linux/mingw (`.a`) basenames; the MSVC `.lib` archive names them differently — see `emit_link_directives`.
 const STATIC_LIBS: &[&str] = &["heif", "x265", "de265"];
 
 fn main() {
@@ -137,13 +138,22 @@ fn extract_zip(bytes: &[u8], dest: &Path) {
 fn emit_link_directives(lib_dir: &Path) {
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
 
-    for lib in STATIC_LIBS {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+
+    // The MSVC Windows archive names its static libs `heif.lib`, `x265-static.lib` and
+    // `libde265.lib`, so the link names differ from the `.a` archives used everywhere else.
+    let libs: &[&str] = if target_os == "windows" {
+        &["heif", "x265-static", "libde265"]
+    } else {
+        STATIC_LIBS
+    };
+
+    for lib in libs {
         println!("cargo:rustc-link-lib=static={lib}");
     }
 
     // libheif, x265, and libde265 are compiled C++, so the C++ runtime and a few system
     // libs must be linked.
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     match target_os.as_str() {
         "macos" => {
             println!("cargo:rustc-link-lib=dylib=c++");
@@ -155,10 +165,9 @@ fn emit_link_directives(lib_dir: &Path) {
             println!("cargo:rustc-link-lib=dylib=dl");
         }
         "windows" => {
-            // The release `.a` archives are GNU-style; building for Windows therefore
-            // expects the `*-pc-windows-gnu` toolchain.
-            println!("cargo:rustc-link-lib=dylib=stdc++");
-            println!("cargo:rustc-link-lib=dylib=pthread");
+            // The release ships MSVC `.lib` archives, which link the C/C++ runtime
+            // automatically via the objects' default-lib directives, so no explicit
+            // runtime libraries are needed here.
         }
         _ => {}
     }

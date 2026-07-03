@@ -1,0 +1,11 @@
+# Convenience aliases for code coverage (see scripts/coverage.sh). Both require
+# `cargo-llvm-cov`:
+#   rustup component add llvm-tools-preview && cargo install cargo-llvm-cov
+#
+# `--ignore-filename-regex` drops the machine-generated FFI bindings from the report. heif-rs
+# generates them at build time with `bindgen` into `OUT_DIR/bindings.rs` (included by
+# `src/sys.rs`) — hundreds of `extern` declarations, type aliases and constants that can't be
+# "executed", which would otherwise understate the real, hand-written coverage.
+[alias]
+cov = "llvm-cov --all-features --ignore-filename-regex bindings\\.rs --html --open"
+cov-lcov = "llvm-cov --all-features --ignore-filename-regex bindings\\.rs --lcov --output-path target/coverage/lcov.info"

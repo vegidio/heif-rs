@@ -1,0 +1,102 @@
+name: Test
+
+# Builds and tests the crate across every OS/architecture the `binaries-heif` release ships:
+# macOS (x64 + arm64), Linux (x64 + arm64), Windows (x64 + arm64). Each leg downloads the
+# matching static archive in `build.rs`, links it, runs `bindgen` against the bundled
+# `heif.h`, and runs the integration tests against `assets/image.jpg` / `assets/image.heic`.
+# `fail-fast: false` so one platform's failure doesn't hide the others; every leg is required
+# (no `continue-on-error`), so a green run is honest.
+#
+# Unlike crates that commit pre-generated bindings, heif-rs runs `bindgen` at build time, so
+# every leg needs libclang available: apt's `libclang-dev` on Linux, LLVM on Windows, and the
+# Xcode command-line tools' bundled libclang on macOS (no install needed).
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Be resilient to flaky crates.io downloads on the runners.
+env:
+  CARGO_NET_RETRY: "10"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ---- macOS (Apple-Silicon runner; x64 leg cross-compiles + runs via Rosetta) -
+          - name: macOS arm64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS x64
+            runner: macos-latest
+            target: x86_64-apple-darwin
+            rosetta: true
+          # ---- Linux (native runners) ------------------------------------------------
+          - name: Linux x64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: Linux arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          # ---- Windows (stock MSVC targets; the archives are MSVC `.lib`) -------------
+          - name: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: Windows arm64
+            runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+
+      # The macOS x64 leg cross-compiles on Apple Silicon; Rosetta 2 lets the resulting
+      # x86_64 test binaries actually run.
+      - name: Install Rosetta 2
+        if: matrix.rosetta
+        run: sudo softwareupdate --install-rosetta --agree-to-license
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # build.rs runs `bindgen`, which needs libclang. macOS ships it with the Xcode
+      # command-line tools, so only Linux and Windows need an explicit install.
+      - name: Install libclang (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
+
+      - name: Install libclang (Windows x64)
+        if: runner.os == 'Windows' && runner.arch == 'X64'
+        run: |
+          choco install llvm -y
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+
+      # choco's `llvm` package is x86-64 only; an ARM64 build script can't load an x64
+      # libclang.dll. Fetch LLVM's native Windows-on-ARM64 build instead.
+      - name: Install libclang (Windows arm64)
+        if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        run: |
+          $ver = "22.1.7"
+          $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$ver/clang+llvm-$ver-aarch64-pc-windows-msvc.tar.xz"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\llvm.tar.xz"
+          New-Item -ItemType Directory -Force -Path C:\llvm | Out-Null
+          tar -xf "$env:RUNNER_TEMP\llvm.tar.xz" -C C:\llvm --strip-components=1
+          echo "LIBCLANG_PATH=C:\llvm\bin" >> $env:GITHUB_ENV
+
+      - name: Build
+        run: cargo build --target ${{ matrix.target }} --all-features
+
+      - name: Test
+        run: cargo test --target ${{ matrix.target }} --all-features

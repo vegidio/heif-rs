@@ -33,3 +33,13 @@ fn roundtrip_grayscale() {
     let decoded = heif::decode(&bytes).expect("decode grayscale");
     assert_eq!(decoded.dimensions(), img.dimensions());
 }
+
+/// 16-bit input must be accepted and down-scaled to the bundled 8-bit HEVC build (exercises the
+/// `Rgb16` layout and the sample down-shift path); dimensions must survive the round-trip.
+#[test]
+fn roundtrip_rgb16_input() {
+    let img = DynamicImage::ImageRgb16(source_image().to_rgb16());
+    let bytes = heif::encode(&img).expect("encode rgb16");
+    let decoded = heif::decode(&bytes).expect("decode rgb16");
+    assert_eq!(decoded.dimensions(), img.dimensions());
+}

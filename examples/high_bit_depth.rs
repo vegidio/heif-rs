@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let info = heif::probe(&bytes)?;
             println!("encoded {} bytes at {:?}", bytes.len(), info.bit_depth);
 
-            let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/high-bit-depth-example.heic");
+            let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/example_high-bit-depth.heic");
             std::fs::write(out, &bytes)?;
             println!("saved -> {}", out);
         }

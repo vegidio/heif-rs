@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .with_chroma(Chroma::Yuv444), // no chroma subsampling
     )?;
 
-    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/custom-encoder-example.heic");
+    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/example_custom-encoder.heic");
     std::fs::write(out, &bytes)?;
 
     println!(

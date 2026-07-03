@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Encode to HEIC with sensible defaults (x265, quality 60, preset slow).
     let bytes = heif::encode(&img)?;
 
-    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/encode-example.heic");
+    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/example_encode.heic");
     std::fs::write(out, &bytes)?;
 
     println!("encoded {} bytes -> {}", bytes.len(), out);

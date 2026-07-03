@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let bytes = heif::encode_buffer(&img)?;
 
-    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/encode-buffer-example.heic");
+    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/example_encode-buffer.heic");
     std::fs::write(out, &bytes)?;
 
     println!("encoded {} bytes from an RgbaImage -> {}", bytes.len(), out);

@@ -45,3 +45,22 @@ fn encodes_with_custom_config() {
     assert!(is_heif(&buf), "rgba output should be a valid HEIC stream");
     assert_eq!(heif::decode(&buf).expect("decode rgba").dimensions(), (w, h));
 }
+
+/// Lossless encoding takes a separate x265 path (`heif_encoder_set_lossless`) and is a headline
+/// feature, so it must produce a valid HEIC that decodes back to the original dimensions.
+#[test]
+fn encodes_lossless() {
+    let img = source_image();
+    let (w, h) = (img.width(), img.height());
+
+    let mut buf = Vec::new();
+    img.write_with_encoder(
+        HeifEncoder::new(&mut buf)
+            .with_lossless(true)
+            .with_chroma(Chroma::Yuv444) // lossless needs full chroma to be meaningful
+            .with_preset(Preset::Ultrafast),
+    )
+    .expect("encode lossless");
+    assert!(is_heif(&buf), "lossless output should be a valid HEIC stream");
+    assert_eq!(heif::decode(&buf).expect("decode lossless").dimensions(), (w, h));
+}

@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let img = heif::decode(&bytes)?;
 
     // `image` infers the output format from the file extension.
-    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/decode-example.png");
+    let out = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/example_decode.png");
     img.save(out)?;
 
     println!("decoded to PNG -> {}", out);

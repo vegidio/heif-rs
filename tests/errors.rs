@@ -26,6 +26,20 @@ fn encode_rejects_zero_dimensions() {
 }
 
 #[test]
+fn encode_rejects_unsupported_color_type() {
+    // 32-bit float RGB is not a layout libheif's interleaved plane supports, so it must map to
+    // the dedicated `ImageError::Unsupported` variant rather than a generic encode failure.
+    let mut out = Vec::new();
+    let encoder = HeifEncoder::new(&mut out);
+    let buf = [0u8; 12]; // 1x1 Rgb32F = 3 channels * 4 bytes
+    let result = encoder.write_image(&buf, 1, 1, ExtendedColorType::Rgb32F);
+    assert!(
+        matches!(result, Err(image::ImageError::Unsupported(_))),
+        "unsupported color type should map to ImageError::Unsupported"
+    );
+}
+
+#[test]
 fn decode_rejects_empty_input() {
     assert!(heif::decode(&[]).is_err(), "empty input should not decode");
 }
