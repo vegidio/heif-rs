@@ -154,9 +154,17 @@ fn emit_link_directives(lib_dir: &Path) {
 
     // libheif, x265, and libde265 are compiled C++, so the C++ runtime and a few system
     // libs must be linked.
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     match target_os.as_str() {
         "macos" => {
             println!("cargo:rustc-link-lib=dylib=c++");
+            // On x86_64, libde265's runtime CPU-feature detection (`__builtin_cpu_supports`)
+            // references `__cpu_model` / `__cpu_indicator_init`, which live in clang's
+            // compiler-rt builtins rather than libSystem. rustc links with `-nodefaultlibs`, so
+            // they must be pulled in explicitly. (arm64 has no such CPUID path.)
+            if target_arch == "x86_64" {
+                link_compiler_rt_builtins();
+            }
         }
         "linux" => {
             println!("cargo:rustc-link-lib=dylib=stdc++");
@@ -166,11 +174,34 @@ fn emit_link_directives(lib_dir: &Path) {
         }
         "windows" => {
             // The release ships MSVC `.lib` archives, which link the C/C++ runtime
-            // automatically via the objects' default-lib directives, so no explicit
-            // runtime libraries are needed here.
+            // automatically via the objects' default-lib directives. x265's thread pool, however,
+            // reads the Windows registry (`RegOpenKeyExA` etc.), so its home — advapi32 — must be
+            // linked explicitly.
+            println!("cargo:rustc-link-lib=dylib=advapi32");
         }
         _ => {}
     }
+}
+
+/// Links clang's compiler-rt builtins so the x86 CPU-feature symbols (`__cpu_model` /
+/// `__cpu_indicator_init`) that libde265 references resolve. Locates the archive via
+/// `clang -print-runtime-dir`; silently does nothing if clang can't be queried, in which case the
+/// linker simply reports the missing symbols as before.
+fn link_compiler_rt_builtins() {
+    let cc = env::var("CC").unwrap_or_else(|_| "clang".into());
+    let Ok(output) = std::process::Command::new(cc).arg("-print-runtime-dir").output() else {
+        return;
+    };
+    if !output.status.success() {
+        return;
+    }
+    let dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if dir.is_empty() {
+        return;
+    }
+    // `libclang_rt.osx.a` provides the builtins for every macOS arch.
+    println!("cargo:rustc-link-search=native={dir}");
+    println!("cargo:rustc-link-lib=static=clang_rt.osx");
 }
 
 /// Generates raw FFI bindings from `include/libheif/heif.h` into `OUT_DIR/bindings.rs`.
