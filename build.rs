@@ -16,7 +16,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 /// Version of the `binaries-heif` release to download.
-const VERSION: &str = "26.7.0";
+const VERSION: &str = "26.10.0";
 
 /// Static archives ship these libraries. Listed dependents-before-dependencies so that GNU ld's single-pass
 /// resolution finds every symbol: libheif uses x265 to encode HEVC and libde265 to decode it. These are the
